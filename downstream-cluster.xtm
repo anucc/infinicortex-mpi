@@ -70,7 +70,7 @@
                       ;; get data from upstream
                       (nn_recv UPSTREAM_SOCKET nanomsg_receive_buffer 4)
                       ;; give to node i
-                      (MPI_Send (cast nanomsg_receive_buffer i8*) MPI_FLOAT i 0 MPI_COMM_WORLD)
+                      (MPI_Send (cast nanomsg_receive_buffer i8*) 1 MPI_FLOAT i 0 MPI_COMM_WORLD)
                       1)))
 
               (doloop (i world_size)
