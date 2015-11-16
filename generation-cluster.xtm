@@ -1,7 +1,7 @@
 
 (sys:load "libs/core/math.xtm")
 (sys:load "libs/external/nanomsg.xtm")
-(sys:load "libs/contrib/mpi.xtm")
+(sys:load "mpi.xtm")
 
 (bind-val MPI_ANY_SOURCE i32 -1) ;; from mpi source
 
