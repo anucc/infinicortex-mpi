@@ -22,7 +22,7 @@
 
 (bind-func send-downstream
   (lambda (buf:float*)
-    (nn_send DOWNSTREAM_SOCKET (pref buf 0) 4 0)))
+    (nn_send DOWNSTREAM_SOCKET (cast buf i8*) 4 0)))
 
 (bind-func main
   (lambda ()
