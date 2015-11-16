@@ -65,17 +65,17 @@
               ;; round robin data between the cluster computer nodes
               (doloop (i world_size)
                 (if (= i 0) ;; don't send to itself
-                    1 
+                    void 
                     (begin 
                       ;; get data from upstream
                       (nn_recv UPSTREAM_SOCKET (cast nanomsg_receive_buffer i8*) 4 0)
                       ;; give to node i
                       (MPI_Send (cast nanomsg_receive_buffer i8*) 1 MPI_FLOAT i 0 MPI_COMM_WORLD)
-                      1)))
+                      void)))
 
               (doloop (i world_size)
                 (if (= i 0)
-                    1
+                    void
                     (begin
                       ;; receive data from node i
                       (MPI_Recv (cast mpi_buffer i8*) 1 MPI_FLOAT MPI_ANY_SOURCE 0 MPI_COMM_WORLD MPI_STATUS_IGNORE)
@@ -83,10 +83,12 @@
                       (root_node_compute mpi_buffer)
                       ;; send-downstream (this doesn't block)
                       (send-downstream mpi_buffer)
-                      )))))
+                      void))))
+            void)
           (begin 
             (while #t
               ;; get the new thing
               (MPI_Recv (cast mpi_buffer i8*) 1 MPI_FLOAT 0 0 MPI_COMM_WORLD MPI_STATUS_IGNORE)
               (compute mpi_buffer)
-              (MPI_Send (cast mpi_buffer i8*) 1 MPI_FLOAT 0 0 MPI_COMM_WORLD)))))))
+              (MPI_Send (cast mpi_buffer i8*) 1 MPI_FLOAT 0 0 MPI_COMM_WORLD))
+            void)))))
