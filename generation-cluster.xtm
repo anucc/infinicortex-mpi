@@ -46,6 +46,6 @@
           (begin
             (while #t
               (compute mpi_buffer)
-              (MPI_Send mpi_buffer 1 MPI_FLOAT 0 0 MPI_COMM_WORLD)))))))
+              (MPI_Send (cast mpi_buffer i8*) 1 MPI_FLOAT 0 0 MPI_COMM_WORLD)))))))
 
 
