@@ -618,6 +618,8 @@
 (bind-lib-val libmpiaddresses xtm_mpi_comm_world MPI_Comm)
 (bind-lib-val libmpiaddresses xtm_mpi_float MPI_Datatype)
 
+(bind-val MPI_ANY_SOURCE i32 -1) ;; from mpi source
+
 (impc:aot:do-or-emit
  (call-as-xtlang (set! MPI_COMM_WORLD xtm_mpi_comm_world)
                  (set! MPI_FLOAT xtm_mpi_float)))
@@ -625,3 +627,5 @@
 
 (impc:aot:insert-footer "xtmmpi")
 (define *xtmlib-mpi-loaded* #t)
+
+
