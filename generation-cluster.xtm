@@ -20,26 +20,30 @@
 (impc:aot:do-or-emit
  (call-as-xtlang (set! MPI_COMM_WORLD xtm_mpi_comm_world)
                  (set! MPI_FLOAT xtm_mpi_float)))
-(bind-lib-val libmpi MPI_ANY_SOURCE MPI_ANY_SOURCE)
+(bind-val MPI_ANY_SOURCE i32 -1) ;; from mpi source
+
 
 (bind-val DOWNSTREAM_SOCKET i32 -1)
 (bind-val NUMBER_OF_DOWNSTREAM_HOSTS i32 2)
 (bind-val DOWNSTREAM_HOSTS |2,i8*|* )
 
-;; 
-
 (bind-func connect-downstream
   (lambda ()
     (set! DOWNSTREAM_SOCKET (nn_socket AF_SP NN_PUSH))
+    (if (< DOWNSTREAM_SOCKET 0)
+        (println "Socket generation failed"))
     (doloop (i NUMBER_OF_DOWNSTREAM_HOSTS)
-      (nn_connect (aref DOWNSTREAM_HOSTS i) ))))
-
-(call-as-xtlang (println (gaussr)))
+      (nn_connect (aref DOWNSTREAM_HOSTS i)))))
 
 (bind-func compute:[float,float*]*
   (lambda (buffer)
     (let ((val (pref buffer 0)))
       (set! val (gaussr)))))
+
+(bind-func send-downstream
+  (lambda (buf:float*)
+    (doloop (i NUMBER_OF_DOWNSTREAM_HOSTS)
+      (nn_send (aref DOWNSTREAM_HOSTS i) (pref buf 0) 4))))
 
 (bind-func main
   (lambda ()

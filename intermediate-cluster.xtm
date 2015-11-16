@@ -1,0 +1,106 @@
+
+(sys:load "libs/core/math.xtm")
+(sys:load "libs/external/nanomsg.xtm")
+
+;;(sys:load "libs/contrib/mpi.xtm")
+(bind-dylib libmpi
+  (cond ((string=? (sys:platform) "OSX")
+         "libmpi.dylib")
+        ((string=? (sys:platform) "Linux")
+         "libmpi.so")
+        ((string=? (sys:platform) "Windows")
+         "libmpi.dll")))
+(bind-alias MPI_Comm i8*)
+(bind-alias MPI_Datatype i8*)
+(bind-lib libmpi MPI_Gather [i32,i8*,i32,MPI_Datatype,i8*,i32,MPI_Datatype,i32,MPI_Comm]*)
+(bind-lib libmpi MPI_Recv [i32,i8*,i32,MPI_Datatype,i32,i32,MPI_Comm,MPI_Status*]*)
+(bind-lib libmpi MPI_Send [i32,i8*,i32,MPI_Datatype,i32,i32,MPI_Comm]*)
+(bind-val MPI_COMM_WORLD MPI_Comm)
+(bind-val MPI_FLOAT MPI_Datatype)
+(impc:aot:do-or-emit
+ (call-as-xtlang (set! MPI_COMM_WORLD xtm_mpi_comm_world)
+                 (set! MPI_FLOAT xtm_mpi_float)))
+(bind-val MPI_ANY_SOURCE i32 -1) ;; from mpi source
+
+(bind-val UPSTREAM_SOCKET i32 -1)
+(bind-val DOWNSTREAM_SOCKET i32 -1)
+(bind-val NUMBER_OF_DOWNSTREAM_HOSTS i32 2)
+(bind-val DOWNSTREAM_HOSTS |2,i8*|* )
+; (bind-val HAS_DOWNSTREAM i32 1) ;; set via cli eval
+
+;; try and connect to the next cluster
+;; DOWNSTREAM_HOSTS and
+;; HAS_DOWNSTREAM will be set in the eval call to the process
+(bind-func connect-downstream
+  (lambda ()
+    (set! DOWNSTREAM_SOCKET (nn_socket AF_SP NN_PUSH))
+    (if (< DOWNSTREAM_SOCKET 0)
+        (println "Socket generation failed"))
+    (doloop (i NUMBER_OF_DOWNSTREAM_HOSTS)
+      (nn_connect (aref DOWNSTREAM_HOSTS i)))))
+
+;; this is what the upstream will connect to 
+(bind-func bind-upstream
+  (lambda ()
+    (let ((address:i8* (zalloc 100)))
+      (set! UPSTREAM_SOCKET (nn_socket AF_SP NN_PULL))
+      (if (< UPSTREAM_SOCKET 0)
+          (println "Upstream socket generation failed"))
+      (sprintf address "tcp://*:9000")
+      (nn_bind UPSTREAM_SOCKET address))))
+
+(bind-func send-downstream
+  (lambda (buf:float*)
+    (doloop (i NUMBER_OF_DOWNSTREAM_HOSTS)
+      (nn_send (aref DOWNSTREAM_HOSTS i) (pref buf 0) 4))))
+
+;; do something to the received values
+(bind-func compute:[float,float*]*
+  (lambda (buffer_ptr)
+    (let ((val (pref buffer_ptr 0)))
+      (set! val (if (< val 0.) 0. 1.)))))
+
+(bind-func main
+  (lambda ()
+    (MPI_Init null null)
+    (let ((world_size_ptr:i32* (zalloc))
+          (world_size (begin
+                        (MPI_Comm_size MPI_COMM_WORLD world_size_ptr)
+                        (pref world_size_ptr 0)))
+          (world_rank_ptr:i32* (zalloc))
+          (world_rank (begin
+                        (MPI_Comm_rank MPI_COMM_WORLD world_rank_ptr)
+                        (pref world_rank_ptr 0)))
+          (mpi_buffer:float* (zalloc))
+          (nanomsg_receive_buffer:float* (zalloc)))
+      
+      (if (= world_rank 0)
+          (begin 
+            (bind-upstream)
+            (connect-downstream)
+            (while 1
+              ;; round robin data between the cluster computer nodes
+              (doloop (i world_size)
+                (if (= i 0) ;; don't send to itself
+                    1 
+                    (begin 
+                      (nn_recv UPSTREAM_SOCKET nanomsg_receive_buffer rcvbuflen)
+                      (MPI_Send nanomsg_receive_buffer MPI_FLOAT i 0 MPI_COMM_WORLD)
+                      1)))
+              ;; only send 
+              
+              (doloop (i world_size)
+                (if (= i 0)
+                    1
+                    (begin
+                      (MPI_Recv mpi_buffer 1 MPI_FLOAT MPI_ANY_SOURCE 0 0 MPI_COMM_WORLD)
+                      ()
+                      (if HAS_DOWNSTREAM
+                          (send-downstream mpi_buffer)))))))
+          (begin 
+            (while 1
+              (MPI_Recv mpi_buffer 1 MPI_FLOAT 0 0 0 MPI_COMM_WORLD)
+              (compute mpi_buffer)
+              (MPI_Send mpi_buffer 1 MPI_Flat 0 0 MPI_COMM_WORLD)))))))
+
+(main)
