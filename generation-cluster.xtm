@@ -41,7 +41,7 @@
           (begin 
             (connect-downstream)
             (while #t
-              (MPI_Recv mpi_buffer 1 MPI_FLOAT MPI_ANY_SOURCE 0 0 MPI_COMM_WORLD)
+              (MPI_Recv (cast mpi_buffer i8*) 1 MPI_FLOAT MPI_ANY_SOURCE 0 MPI_COMM_WORLD MPI_STATUS_IGNORE)
               (send-downstream mpi_buffer)))
           (begin
             (while #t
