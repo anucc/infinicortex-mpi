@@ -1,0 +1,69 @@
+
+(sys:load "libs/core/math.xtm")
+(sys:load "libs/external/nanomsg.xtm")
+
+;;(sys:load "libs/contrib/mpi.xtm")
+(bind-dylib libmpi
+  (cond ((string=? (sys:platform) "OSX")
+         "libmpi.dylib")
+        ((string=? (sys:platform) "Linux")
+         "libmpi.so")
+        ((string=? (sys:platform) "Windows")
+         "libmpi.dll")))
+(bind-alias MPI_Comm i8*)
+(bind-alias MPI_Datatype i8*)
+(bind-lib libmpi MPI_Gather [i32,i8*,i32,MPI_Datatype,i8*,i32,MPI_Datatype,i32,MPI_Comm]*)
+(bind-lib libmpi MPI_Recv [i32,i8*,i32,MPI_Datatype,i32,i32,MPI_Comm,MPI_Status*]*)
+(bind-lib libmpi MPI_Send [i32,i8*,i32,MPI_Datatype,i32,i32,MPI_Comm]*)
+(bind-val MPI_COMM_WORLD MPI_Comm)
+(bind-val MPI_FLOAT MPI_Datatype)
+(impc:aot:do-or-emit
+ (call-as-xtlang (set! MPI_COMM_WORLD xtm_mpi_comm_world)
+                 (set! MPI_FLOAT xtm_mpi_float)))
+(bind-lib-val libmpi MPI_ANY_SOURCE MPI_ANY_SOURCE)
+
+(bind-val DOWNSTREAM_SOCKET i32 -1)
+(bind-val NUMBER_OF_DOWNSTREAM_HOSTS i32 2)
+(bind-val DOWNSTREAM_HOSTS |2,i8*|* )
+
+;; 
+
+(bind-func connect-downstream
+  (lambda ()
+    (set! DOWNSTREAM_SOCKET (nn_socket AF_SP NN_PUSH))
+    (doloop (i NUMBER_OF_DOWNSTREAM_HOSTS)
+      (nn_connect (aref DOWNSTREAM_HOSTS i) ))))
+
+(call-as-xtlang (println (gaussr)))
+
+(bind-func compute:[float,float*]*
+  (lambda (buffer)
+    (let ((val (pref buffer 0)))
+      (set! val (gaussr)))))
+
+(bind-func main
+  (lambda ()
+    (MPI_Init null null)
+    (let ((world_size_ptr:i32* (zalloc))
+           (world_size (begin
+                          (MPI_Comm_size MPI_COMM_WORLD world_size_ptr)
+                          (pref world_size_ptr 0)))
+           (world_rank_ptr:i32* (zalloc))
+           (world_rank (begin
+                          (MPI_Comm_rank MPI_COMM_WORLD world_rank_ptr)
+                          (pref world_rank_ptr 0)))
+           (mpi_buffer:float* (zalloc)))
+      
+      (if (= world_rank 0)
+          (begin 
+            (connect-downstream)
+            (while 1
+              (MPI_Recv mpi_buffer 1 MPI_FLOAT MPI_ANY_SOURCE 0 0 MPI_COMM_WORLD)
+              (send-downstream)))
+          (begin 
+            (while 1
+              (compute mpi_buffer)
+              (MPI_Send mpi_buffer 1 MPI_Flat 0 0 MPI_COMM_WORLD))
+            )))))
+
+(main)
