@@ -29,7 +29,7 @@
 ; (bind-val HAS_DOWNSTREAM i32 1) ;; set via cli eval
 
 ;; try and connect to the next cluster
-;; DOWNSTREAM_HOSTS and
+  ;; DOWNSTREAM_HOSTS and
 ;; HAS_DOWNSTREAM will be set in the eval call to the process
 (bind-func connect-downstream
   (lambda ()
@@ -59,6 +59,11 @@
   (lambda (buffer_ptr)
     (let ((val (pref buffer_ptr 0)))
       (set! val (if (< val 0.) 0. 1.)))))
+
+;; for any final computations before it either gets sent downstream or is discarded
+(bind-func root_node_compute
+  (lambda (mpi_buffer:float*)
+    1))
 
 (bind-func main
   (lambda ()
@@ -94,7 +99,7 @@
                     1
                     (begin
                       (MPI_Recv mpi_buffer 1 MPI_FLOAT MPI_ANY_SOURCE 0 0 MPI_COMM_WORLD)
-                      ()
+                      (root_node_compute mpi_buffer)
                       (if HAS_DOWNSTREAM
                           (send-downstream mpi_buffer)))))))
           (begin 
