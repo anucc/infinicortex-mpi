@@ -40,11 +40,11 @@
       (if (= world_rank 0)
           (begin 
             (connect-downstream)
-            (while 1
+            (while #t
               (MPI_Recv mpi_buffer 1 MPI_FLOAT MPI_ANY_SOURCE 0 0 MPI_COMM_WORLD)
               (send-downstream mpi_buffer)))
           (begin
-            (while 1
+            (while #t
               (compute mpi_buffer)
               (MPI_Send mpi_buffer 1 MPI_Flat 0 0 MPI_COMM_WORLD)))))))
 
