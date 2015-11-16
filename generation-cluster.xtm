@@ -10,6 +10,9 @@
          "libmpi.so")
         ((string=? (sys:platform) "Windows")
          "libmpi.dll")))
+
+(bind-type ompi_status_public_t <i32,i32,i32,i32,size_t>)
+(bind-alias MPI_Status ompi_status_public_t)
 (bind-alias MPI_Comm i8*)
 (bind-alias MPI_Datatype i8*)
 (bind-lib libmpi MPI_Gather [i32,i8*,i32,MPI_Datatype,i8*,i32,MPI_Datatype,i32,MPI_Comm]*)
