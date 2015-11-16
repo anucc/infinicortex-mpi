@@ -7,7 +7,6 @@
 (bind-val DOWNSTREAM_SOCKET i32 -1)
 (bind-val NUMBER_OF_DOWNSTREAM_HOSTS i32 2)
 
-
 ;; try and connect to the next cluster
 ;; DOWNSTREAM_HOSTS and
 ;; HAS_DOWNSTREAM will be set in the eval call to the process
@@ -30,14 +29,14 @@
 
 (bind-func send-downstream
   (lambda (buf:float*)
-    (doloop (i NUMBER_OF_DOWNSTREAM_HOSTS)
-      (nn_send (aref DOWNSTREAM_HOSTS i) (pref buf 0) 4 NN_DONTWAIT))))
+    (nn_send DOWNSTREAM_SOCKET (pref buf 0) 4 NN_DONTWAIT)))
 
-;; do something to the received values
+;; do something to the received values, 
 (bind-func compute:[float,float*]*
   (lambda (buffer_ptr)
     (let ((val (pref buffer_ptr 0)))
-      (set! val (if (< val 0.) 0. 1.)))))
+      ;; this is just some random stuff, change as required
+      (set! val (if (< val 0.) (* val 2) (* val 3))))))
 
 ;; for any final computations before it either gets sent downstream or is discarded
 (bind-func root_node_compute
@@ -61,9 +60,8 @@
       (if (= world_rank 0)
           (begin 
             (connect-upstream)
-            (if (impc:ti:globalvar-exists? "DOWNSTREAM_HOST1")
-                (bind-downstream))
-            (while 1
+            (bind-downstream)
+            (while #t
               ;; round robin data between the cluster computer nodes
               (doloop (i world_size)
                 (if (= i 0) ;; don't send to itself
@@ -81,14 +79,14 @@
                     (begin
                       ;; receive data from node i
                       (MPI_Recv (cast mpi_buffer i8*) 1 MPI_FLOAT MPI_ANY_SOURCE 0 MPI_COMM_WORLD MPI_STATUS_IGNORE)
-                      ;; do something to it
+                      ;; do something to it, or not
                       (root_node_compute mpi_buffer)
                       ;; send-downstream (this doesn't block)
-                      (if (impc:ti:globalvar-exists? "DOWNSTREAM_HOST1")
-                          (send-downstream mpi_buffer))
+                      (send-downstream mpi_buffer)
                       )))))
           (begin 
-            (while 1
+            (while #t
+              ;; get the new thing
               (MPI_Recv (cast mpi_buffer i8*) 1 MPI_FLOAT 0 0 MPI_COMM_WORLD MPI_STATUS_IGNORE)
               (compute mpi_buffer)
               (MPI_Send (cast mpi_buffer i8*) 1 MPI_FLOAT 0 0 MPI_COMM_WORLD)))))))
