@@ -34,7 +34,7 @@
                           (MPI_Comm_rank MPI_COMM_WORLD world_rank_ptr)
                           (pref world_rank_ptr 0)))
            (mpi_buffer:float* (zalloc)))
-      
+
       (if (= world_rank 0)
           (begin 
             (bind-downstream)

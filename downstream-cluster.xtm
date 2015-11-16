@@ -29,7 +29,7 @@
 
 (bind-func send-downstream
   (lambda (buf:float*)
-    (nn_send DOWNSTREAM_SOCKET (pref buf 0) 4 NN_DONTWAIT)))
+    (nn_send DOWNSTREAM_SOCKET (cast buf i8*) 4 NN_DONTWAIT)))
 
 ;; do something to the received values, 
 (bind-func compute:[float,float*]*
