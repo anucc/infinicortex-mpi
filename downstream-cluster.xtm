@@ -11,23 +11,22 @@
 ;; try and connect to the next cluster
 ;; DOWNSTREAM_HOSTS and
 ;; HAS_DOWNSTREAM will be set in the eval call to the process
-(bind-func connect-downstream
+(bind-func bind-downstream
   (lambda ()
     (set! DOWNSTREAM_SOCKET (nn_socket AF_SP NN_PUSH))
     (if (< DOWNSTREAM_SOCKET 0)
         (println "Socket generation failed"))
-    (doloop (i NUMBER_OF_DOWNSTREAM_HOSTS)
-      (nn_connect (aref DOWNSTREAM_HOSTS i)))))
+    (nn_bind DOWNSTREAM_SOCKET "tcp://*:9000")))
 
 ;; this is what the upstream will connect to 
-(bind-func bind-upstream
+(bind-func connect-upstream
   (lambda ()
     (let ((address:i8* (zalloc 100)))
       (set! UPSTREAM_SOCKET (nn_socket AF_SP NN_PULL))
       (if (< UPSTREAM_SOCKET 0)
           (println "Upstream socket generation failed"))
-      (sprintf address "tcp://*:9000")
-      (nn_bind UPSTREAM_SOCKET address))))
+      (nn_connect UPSTREAM_SOCKET UPSTREAM_HOST1)
+      (nn_connect UPSTREAM_SOCKET UPSTREAM_HOST2))))
 
 (bind-func send-downstream
   (lambda (buf:float*)
@@ -61,9 +60,9 @@
       
       (if (= world_rank 0)
           (begin 
-            (bind-upstream)
+            (connect-upstream)
             (if (impc:ti:globalvar-exists? "DOWNSTREAM_HOST1")
-                (connect-downstream))
+                (bind-downstream))
             (while 1
               ;; round robin data between the cluster computer nodes
               (doloop (i world_size)

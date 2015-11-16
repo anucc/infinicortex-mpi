@@ -7,7 +7,7 @@
 
 (bind-func bind-downstream
   (lambda ()
-    (set! DOWNSTREAM_SOCKET (nn_socket AF_SP NN_PUB))
+    (set! DOWNSTREAM_SOCKET (nn_socket AF_SP NN_PUSH))
     (if (< DOWNSTREAM_SOCKET 0)
         (println "Socket generation failed"))
     (nn_bind DOWNSTREAM_SOCKET "tcp://*:9000")))
