@@ -42,8 +42,8 @@
             (connect-downstream)
             (while 1
               (MPI_Recv mpi_buffer 1 MPI_FLOAT MPI_ANY_SOURCE 0 0 MPI_COMM_WORLD)
-              (send-downstream)))
-          (begin 
+              (send-downstream mpi_buffer)))
+          (begin
             (while 1
               (compute mpi_buffer)
               (MPI_Send mpi_buffer 1 MPI_Flat 0 0 MPI_COMM_WORLD)))))))
