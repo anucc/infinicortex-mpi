@@ -36,7 +36,7 @@
   (lambda (buffer_ptr)
     (let ((val (pref buffer_ptr 0)))
       ;; this is just some random stuff, change as required
-      (set! val (if (< val 0.) (* val 2) (* val 3))))))
+      (set! val (if (< val 0.) (* val 2.) (* val 3.))))))
 
 ;; for any final computations before it either gets sent downstream or is discarded
 (bind-func root_node_compute
