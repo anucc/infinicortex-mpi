@@ -3,18 +3,16 @@
 (sys:load "libs/external/nanomsg.xtm")
 (sys:load "mpi.xtm")
 
-(bind-val MPI_ANY_SOURCE i32 -1) ;; from mpi source
-
 (bind-val DOWNSTREAM_SOCKET i32 -1)
 
-(bind-func connect-downstream
+(bind-func bind-downstream
   (lambda ()
-    (set! DOWNSTREAM_SOCKET (nn_socket AF_SP NN_PUSH))
+    (set! DOWNSTREAM_SOCKET (nn_socket AF_SP NN_PUB))
     (if (< DOWNSTREAM_SOCKET 0)
         (println "Socket generation failed"))
-    (nn_connect DOWNSTREAM_SOCKET DOWNSTREAM_HOST1)
-    (nn_connect DOWNSTREAM_SOCKET DOWNSTREAM_HOST2)))
+    (nn_bind DOWNSTREAM_SOCKET "tcp://*:9000")))
 
+;; this is the source of all data
 (bind-func compute:[float,float*]*
   (lambda (buffer)
     (let ((val (pref buffer 0)))
@@ -22,7 +20,7 @@
 
 (bind-func send-downstream
   (lambda (buf:float*)
-    (nn_send DOWNSTREAM_SOCKET (cast buf i8*) 4 0)))
+    (nn_send DOWNSTREAM_SOCKET (cast buf i8*) 4 NN_DONTWAIT)))
 
 (bind-func main
   (lambda ()
@@ -39,7 +37,7 @@
       
       (if (= world_rank 0)
           (begin 
-            (connect-downstream)
+            (bind-downstream)
             (while #t
               (MPI_Recv (cast mpi_buffer i8*) 1 MPI_FLOAT MPI_ANY_SOURCE 0 MPI_COMM_WORLD MPI_STATUS_IGNORE)
               (send-downstream mpi_buffer)))
